@@ -1,0 +1,63 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install Android build tools
+        run: sdkmanager "build-tools;33.0.2" "platforms;android-33"
+
+      - name: Init Bubblewrap project
+        run: |
+          mkdir apk-build && cd apk-build
+          bubblewrap init --manifest "https://noorali12qwaszx30-creator.github.io/muhasib-pro/manifest.json" \
+            --directory . \
+            --skip-prompt \
+            --host "noorali12qwaszx30-creator.github.io" \
+            --name "محاسب برو" \
+            --launcherName "محاسب برو" \
+            --themeColor "#0EA5A8" \
+            --backgroundColor "#F8FAFC" \
+            --startUrl "/muhasib-pro/index.html" \
+            --iconUrl "https://noorali12qwaszx30-creator.github.io/muhasib-pro/icon-512.png" \
+            --iconSize "512x512" \
+            --packageId "com.muhasibpro.app"
+
+      - name: Build APK
+        run: |
+          cd apk-build
+          bubblewrap build --skipPwaValidation
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: muhasib-pro-apk
+          path: apk-build/app-release-signed.apk
+          if-no-files-found: warn
