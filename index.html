@@ -367,10 +367,7 @@ select.fi{cursor:pointer}
       <input class="fi" id="iP" type="password" placeholder="أدخل كلمة المرور"/>
     </div>
     <button class="btn-g" onclick="doLogin()">تسجيل الدخول</button>
-    <div class="demo">
-      <b>حسابات تجريبية</b>
-      مدير / 1234 &nbsp;·&nbsp; كاشير / 1234 &nbsp;·&nbsp; سائق / 1234
-    </div>
+
   </div>
 </div>
 <div id="MS" class="scr">
@@ -499,12 +496,14 @@ let db_fs=null,syncTimeout=null,unsubscribe=null,collapsedCats={};
 
 const fmt=n=>Number(n||0).toLocaleString("en-US");
 // Shift day: starts at 11:00 AM, ends at 10:59 AM next day
-// If current time is between 00:00-10:59, treat as previous calendar day
 function tds(){
+  // Check for manual day reset
+  if(db && db._forcedShiftDate){
+    return db._forcedShiftDate;
+  }
   const now=new Date();
   const h=now.getHours();
   if(h<11){
-    // Before 11AM = still previous shift day
     const prev=new Date(now);
     prev.setDate(prev.getDate()-1);
     return prev.toISOString().slice(0,10);
@@ -572,6 +571,26 @@ function showBanner(msg,col){
 function hideBanner(){const el=document.getElementById("syncBanner");if(el)el.style.transform="translateY(-100%)"}
 
 function sdb(){try{localStorage.setItem("rms_j8",JSON.stringify(db))}catch{}schedulePush()}
+
+// Manual day reset - force new shift day
+function manualDayReset(){
+  showCov(
+    "إعادة تعيين اليوم يدوياً",
+    "سيتم بدء يوم شفت جديد الآن بدون انتظار الساعة 11",
+    ()=>{
+      // Clear today's record flag by setting a new date override
+      db._manualDate = new Date().toISOString().slice(0,10);
+      // Also bump the date to next day so tds() returns new date
+      const now = new Date();
+      now.setDate(now.getDate()+1);
+      db._forcedShiftDate = now.toISOString().slice(0,10);
+      sdb();
+      showBanner("✅ تم بدء يوم جديد","#16a34a");
+      setTimeout(hideBanner,3000);
+      render();
+    }
+  );
+}
 
 // AUTH
 function doLogin(){
@@ -680,6 +699,7 @@ function rMD(){
 
   const last=recs[recs.length-1];
   if(last)h+=`<div class="card"><div class="ch"><span class="cht">آخر يوم — ${last.note||last.date}</span></div><div class="tg"><div class="ti"><div class="tl2">الوارد</div><div class="tv gold">${fmt(last.totalIncome)}</div></div><div class="ti"><div class="tl2">الصافي</div><div class="tv grn">${fmt(last.netIncome)}</div></div><div class="ti"><div class="tl2">الصرفيات</div><div class="tv org">${fmt(last.expenses)}</div></div><div class="ti"><div class="tl2">أيام مسجلة</div><div class="tv" style="color:var(--p)">${recs.length}</div></div></div></div>`;
+  h+=`<button onclick="manualDayReset()" style="width:100%;padding:14px;background:rgba(234,88,12,.07);border:1.5px solid rgba(234,88,12,.25);border-radius:14px;color:var(--or);font-family:'Tajawal',sans-serif;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px">${getSVG("records",16)} بدء يوم جديد يدوياً</button>`;
   return h;
 }
 
